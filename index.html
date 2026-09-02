@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Bank Soal SMPN 37 Makassar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6d28f5">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="app-logo-group">
+        <span class="app-logo"><img class="logo-zoom" src="assets/logo-sekolah.jpg" alt="Logo SMPN 37 Makassar"></span>
+        <span class="app-logo"><img src="assets/tutwurihandayani.svg" alt="Logo Tut Wuri Handayani"></span>
+      </div>
+      <div>
+        <h1>Bank Soal SMPN 37 Makassar</h1>
+        <p class="app-subtitle">Latihan soal pilihan ganda kelas 7, 8, dan 9</p>
+      </div>
+    </div>
+    <img class="header-skyline" src="assets/skyline-sekolah.svg" alt="" aria-hidden="true">
+  </header>
+
+  <main id="app-main">
+
+    <!-- LOADING -->
+    <section id="screen-loading" class="screen active">
+      <div class="card center-card">
+        <div class="spinner"></div>
+        <p>Memuat soal...</p>
+      </div>
+    </section>
+
+    <!-- ERROR -->
+    <section id="screen-error" class="screen">
+      <div class="card center-card">
+        <p class="error-icon">⚠️</p>
+        <h2>Gagal Memuat Soal</h2>
+        <p id="error-message" class="error-text"></p>
+        <p class="hint-text">Coba periksa koneksi internet kamu, lalu muat ulang halaman.</p>
+      </div>
+    </section>
+
+    <!-- HOME -->
+    <section id="screen-home" class="screen">
+      <div class="card center-card">
+        <span class="status-pill">🟢 Soal siap, yuk mulai belajar!</span>
+        <h2>Mau mulai sebagai apa?</h2>
+        <p class="hint-text">Pilih peran kamu untuk melanjutkan.</p>
+        <div class="role-buttons">
+          <button id="btn-siswa" class="role-button role-siswa">
+            <span class="role-icon">🧑‍🎓</span>
+            <span>Latihan Soal (Siswa)</span>
+          </button>
+          <button id="btn-guru" class="role-button role-guru">
+            <span class="role-icon">🧑‍🏫</span>
+            <span>Mode Guru</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- NAMA SISWA -->
+    <section id="screen-nama" class="screen">
+      <div class="card center-card">
+        <span class="role-icon big-icon">👋</span>
+        <h2>Siapa namamu?</h2>
+        <p class="hint-text">Nama ini dipakai supaya nilaimu tercatat dan gurumu bisa lihat hasilnya.</p>
+        <form id="form-nama" class="stack-form">
+          <input id="input-nama" type="text" placeholder="Tulis nama lengkap anda" required maxlength="60" autocomplete="name">
+          <input id="input-kelas-rombel" type="text" placeholder="Kelas & rombel, contoh: 7A" required maxlength="10" autocomplete="off">
+          <button type="submit" class="primary-button">Lanjut &rarr;</button>
+        </form>
+        <button class="back-button" data-back="screen-home">&larr; Kembali</button>
+      </div>
+    </section>
+
+    <!-- PIN GURU -->
+    <section id="screen-guru-pin" class="screen">
+      <div class="card center-card">
+        <span class="role-icon big-icon">🔒</span>
+        <h2>Masuk Mode Guru</h2>
+        <p class="hint-text">Masukkan PIN guru untuk melanjutkan.</p>
+        <form id="form-pin" class="stack-form">
+          <input id="input-pin" type="password" inputmode="numeric" placeholder="PIN" required autocomplete="off">
+          <button type="submit" class="primary-button">Masuk</button>
+        </form>
+        <p id="pin-error" class="error-text"></p>
+        <button class="back-button" data-back="screen-home">&larr; Kembali</button>
+      </div>
+    </section>
+
+    <!-- MENU GURU -->
+    <section id="screen-guru-menu" class="screen">
+      <div class="card center-card">
+        <h2>Menu Guru</h2>
+        <div class="role-buttons">
+          <button id="btn-menu-soal" class="role-button role-siswa">
+            <span class="role-icon">📖</span>
+            <span>Kelola Soal &amp; Kunci Jawaban</span>
+          </button>
+          <button id="btn-menu-import" class="role-button role-menu-alt">
+            <span class="role-icon">📥</span>
+            <span>Import Soal Massal</span>
+          </button>
+          <button id="btn-menu-statistik" class="role-button role-menu-alt">
+            <span class="role-icon">📈</span>
+            <span>Statistik Soal</span>
+          </button>
+          <button id="btn-menu-leaderboard" class="role-button role-menu-alt">
+            <span class="role-icon">🏆</span>
+            <span>Papan Peringkat</span>
+          </button>
+          <button id="btn-menu-nilai" class="role-button role-guru">
+            <span class="role-icon">📊</span>
+            <span>Rekap Nilai Siswa</span>
+          </button>
+        </div>
+        <button class="back-button" data-back="screen-home">&larr; Kembali</button>
+      </div>
+    </section>
+
+    <!-- PILIH KELAS -->
+    <section id="screen-kelas" class="screen">
+      <div class="card">
+        <button class="back-button" data-back="screen-home">&larr; Kembali</button>
+        <div class="badge-row">
+          <p id="nama-badge" class="nama-badge"></p>
+          <button id="btn-riwayat-siswa" class="link-button" hidden>📜 Riwayat Nilai Saya</button>
+        </div>
+        <h2 id="kelas-title">Pilih Kelas</h2>
+        <div id="kelas-list" class="pill-list"></div>
+      </div>
+    </section>
+
+    <!-- PILIH MAPEL -->
+    <section id="screen-mapel" class="screen">
+      <div class="card">
+        <button class="back-button" data-back="screen-kelas">&larr; Ganti Kelas</button>
+        <h2 id="mapel-title">Pilih Mata Pelajaran</h2>
+        <div id="mapel-list" class="mapel-grid"></div>
+      </div>
+    </section>
+
+    <!-- PILIH BAB (SISWA) -->
+    <section id="screen-bab" class="screen">
+      <div class="card">
+        <button class="back-button" data-back="screen-mapel">&larr; Ganti Mapel</button>
+        <h2 id="bab-title">Pilih Bab</h2>
+        <p class="hint-text">Mau latihan semua bab atau fokus satu bab dulu?</p>
+        <div id="bab-list" class="bab-list"></div>
+      </div>
+    </section>
+
+    <!-- KUIS -->
+    <section id="screen-quiz" class="screen">
+      <div class="card">
+        <div class="quiz-top">
+          <span id="quiz-subject" class="quiz-subject"></span>
+          <span id="quiz-progress-text" class="quiz-progress-text"></span>
+        </div>
+        <div class="progress-track">
+          <div id="quiz-progress-bar" class="progress-fill"></div>
+        </div>
+        <div id="quiz-dots" class="quiz-dots"></div>
+        <p id="quiz-bab" class="quiz-bab"></p>
+        <h2 id="quiz-question" class="quiz-question"></h2>
+        <img id="quiz-gambar" class="soal-gambar" hidden alt="Foto soal">
+        <div id="quiz-options" class="options-list"></div>
+        <p id="quiz-warning" class="quiz-warning" hidden></p>
+        <div class="quiz-nav">
+          <button id="btn-quiz-prev" class="secondary-button">&larr; Sebelumnya</button>
+          <button id="btn-quiz-next" class="primary-button">Berikutnya</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- HASIL -->
+    <section id="screen-hasil" class="screen">
+      <div class="card">
+        <div class="hasil-summary">
+          <p id="hasil-subject" class="hasil-subject"></p>
+          <p id="hasil-score" class="hasil-score"></p>
+          <p id="hasil-percentage" class="hasil-percentage"></p>
+          <p id="hasil-label" class="hasil-label"></p>
+        </div>
+        <div class="hasil-actions">
+          <button id="btn-hasil-ulangi" class="primary-button">Ulangi Latihan</button>
+          <button id="btn-hasil-ganti-mapel" class="secondary-button">Pilih Mapel Lain</button>
+        </div>
+        <button id="btn-lihat-leaderboard" class="link-button center-link">🏆 Lihat Papan Peringkat Kelas Ini</button>
+        <h3 class="hasil-heading">Pembahasan Soal</h3>
+        <div id="hasil-list"></div>
+      </div>
+    </section>
+
+    <!-- KUNCI JAWABAN (GURU) -->
+    <section id="screen-kunci" class="screen">
+      <div class="card">
+        <button class="back-button" id="btn-back-kunci">&larr; Ganti Mapel</button>
+        <p id="kunci-subject" class="hasil-subject"></p>
+        <div class="kunci-actions">
+          <h3 class="hasil-heading no-border">Kunci Jawaban &amp; Pembahasan</h3>
+          <button id="btn-buka-tambah-soal" class="secondary-button small-button">+ Tambah Soal</button>
+        </div>
+        <div id="kunci-list"></div>
+      </div>
+    </section>
+
+    <!-- TAMBAH SOAL (GURU) -->
+    <section id="screen-tambah-soal" class="screen">
+      <div class="card">
+        <button class="back-button" id="btn-back-tambah-soal">&larr; Kembali</button>
+        <h2 id="tambah-soal-title">Tambah Soal Baru</h2>
+        <form id="form-tambah-soal" class="stack-form">
+          <label>Kelas
+            <select id="ts-kelas" required>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+            </select>
+          </label>
+          <label>Mata Pelajaran
+            <select id="ts-mapel" required></select>
+          </label>
+          <label>Bab / Topik
+            <input id="ts-bab" type="text" placeholder="Contoh: Bilangan Bulat">
+          </label>
+          <label>Pertanyaan
+            <textarea id="ts-pertanyaan" rows="3" required placeholder="Tulis pertanyaan di sini..."></textarea>
+          </label>
+          <label>Foto Soal (opsional)
+            <input id="ts-gambar-input" type="file" accept="image/*">
+          </label>
+          <p id="ts-gambar-hint" class="hint-text small-hint">Boleh dikosongkan. Foto otomatis dikecilkan sebelum disimpan.</p>
+          <div id="ts-gambar-preview-wrap" class="gambar-preview-wrap" hidden>
+            <img id="ts-gambar-preview" alt="Pratinjau foto soal">
+            <button type="button" id="btn-hapus-gambar" class="secondary-button small-button">✕ Hapus Foto</button>
+          </div>
+          <label>Opsi A <input id="ts-opsiA" type="text" required></label>
+          <label>Opsi B <input id="ts-opsiB" type="text" required></label>
+          <label>Opsi C <input id="ts-opsiC" type="text" required></label>
+          <label>Opsi D <input id="ts-opsiD" type="text" required></label>
+          <label>Jawaban Benar
+            <select id="ts-jawaban" required>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+            </select>
+          </label>
+          <label>Pembahasan
+            <textarea id="ts-pembahasan" rows="3" required placeholder="Jelaskan kenapa jawaban itu benar..."></textarea>
+          </label>
+          <p id="ts-message" class="form-message" hidden></p>
+          <button type="submit" id="btn-simpan-soal" class="primary-button">Simpan Soal</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- REKAP NILAI (GURU) -->
+    <section id="screen-nilai" class="screen">
+      <div class="card">
+        <button class="back-button" data-back="screen-guru-menu">&larr; Kembali</button>
+        <div class="kunci-actions">
+          <h2 class="no-margin">Rekap Nilai Siswa</h2>
+          <button id="btn-unduh-nilai" class="secondary-button small-button">⬇️ Unduh CSV</button>
+        </div>
+        <div class="nilai-filters">
+          <select id="nilai-filter-kelas">
+            <option value="">Semua Kelas</option>
+            <option value="7">Kelas 7</option>
+            <option value="8">Kelas 8</option>
+            <option value="9">Kelas 9</option>
+          </select>
+          <select id="nilai-filter-mapel">
+            <option value="">Semua Mapel</option>
+          </select>
+          <input id="nilai-filter-nama" type="text" placeholder="Cari nama...">
+        </div>
+        <p class="hint-text small-hint">CSV berisi juga kolom Kelas/Rombel dan rincian jawaban tiap siswa per soal.</p>
+
+        <h3 class="hasil-heading">Rata-rata Nilai per Mata Pelajaran</h3>
+        <div id="nilai-chart-mapel" class="bar-chart"></div>
+
+        <h3 class="hasil-heading">Rata-rata Nilai per Kelas</h3>
+        <div id="nilai-chart-kelas" class="bar-chart"></div>
+
+        <h3 class="hasil-heading">Semua Data Nilai</h3>
+        <div id="nilai-table-wrap" class="nilai-table-wrap"></div>
+      </div>
+    </section>
+
+    <!-- IMPORT SOAL MASSAL (GURU) -->
+    <section id="screen-import-soal" class="screen">
+      <div class="card">
+        <button class="back-button" data-back="screen-guru-menu">&larr; Kembali</button>
+        <h2>Import Soal Massal</h2>
+        <p class="hint-text">Tempel data CSV di bawah, atau upload file .csv. Urutan kolom: kelas, mapel, bab, pertanyaan, opsiA, opsiB, opsiC, opsiD, jawaban, pembahasan.</p>
+        <button id="btn-unduh-template-csv" type="button" class="secondary-button small-button">⬇️ Unduh Template CSV</button>
+        <div class="stack-form">
+          <label>Upload file CSV (opsional)
+            <input id="import-file-input" type="file" accept=".csv,text/csv">
+          </label>
+          <label>Atau tempel data CSV di sini
+            <textarea id="import-textarea" rows="8" placeholder="kelas,mapel,bab,pertanyaan,opsiA,opsiB,opsiC,opsiD,jawaban,pembahasan"></textarea>
+          </label>
+          <button id="btn-mulai-import" type="button" class="primary-button">Mulai Import</button>
+        </div>
+        <p id="import-status" class="form-message" hidden></p>
+        <div id="import-log"></div>
+      </div>
+    </section>
+
+    <!-- STATISTIK SOAL (GURU) -->
+    <section id="screen-statistik" class="screen">
+      <div class="card">
+        <button class="back-button" data-back="screen-mapel">&larr; Ganti Mapel</button>
+        <p id="statistik-subject" class="hasil-subject"></p>
+        <h3 class="hasil-heading no-border">Statistik Soal</h3>
+        <p class="hint-text small-hint">Diurutkan dari soal yang paling banyak dijawab salah.</p>
+        <div id="statistik-list"></div>
+      </div>
+    </section>
+
+    <!-- PAPAN PERINGKAT (LEADERBOARD) -->
+    <section id="screen-leaderboard" class="screen">
+      <div class="card">
+        <button class="back-button" data-back="screen-mapel">&larr; Kembali</button>
+        <p id="leaderboard-subject" class="hasil-subject"></p>
+        <h3 class="hasil-heading no-border">🏆 Papan Peringkat</h3>
+        <p class="hint-text small-hint">Berdasarkan nilai terbaik tiap siswa.</p>
+        <div id="leaderboard-list"></div>
+      </div>
+    </section>
+
+    <!-- RIWAYAT NILAI SISWA -->
+    <section id="screen-riwayat-siswa" class="screen">
+      <div class="card">
+        <button class="back-button" data-back="screen-kelas">&larr; Kembali</button>
+        <p id="riwayat-subject" class="hasil-subject"></p>
+        <h3 class="hasil-heading no-border">📜 Riwayat Nilai Saya</h3>
+        <div id="riwayat-list"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="lightbox" class="lightbox" hidden>
+    <img id="lightbox-img" src="" alt="Foto soal diperbesar">
+  </div>
+
+  <footer class="app-footer">
+    <div class="footer-logo-group">
+      <span class="footer-logo-chip"><img class="footer-logo logo-zoom" src="assets/logo-sekolah.jpg" alt="Logo SMPN 37 Makassar"></span>
+      <img class="footer-logo" src="assets/tutwurihandayani.svg" alt="Logo Tut Wuri Handayani">
+    </div>
+    <p>Dibuat untuk membantu belajar siswa SMPN 37 Makassar 🇮🇩</p>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="data/soal.js"></script>
+  <script src="js/dataSource.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
