@@ -7,8 +7,13 @@
 const LOCAL_CUSTOM_SOAL_KEY = 'bankSoal:customSoal';
 const LOCAL_DELETED_SOAL_KEY = 'bankSoal:deletedSoal';
 const LOCAL_NILAI_KEY = 'bankSoal:nilaiLog';
+const LOCAL_PENGATURAN_KEY = 'bankSoal:pengaturanLatihan';
+
+const VALID_TINGKAT = ['Mudah', 'Sedang', 'Sulit'];
+const DEFAULT_PENGATURAN_LATIHAN = { jumlahSoal: 20, persenMudah: 40, persenSedang: 40, persenSulit: 20 };
 
 function normalizeQuestion(raw, index) {
+  const tingkatMentah = String(raw.tingkat || '').trim();
   return {
     id: raw.id || `q-${index}-${Date.now()}`,
     kelas: String(raw.kelas || '').trim(),
@@ -23,6 +28,8 @@ function normalizeQuestion(raw, index) {
     },
     jawaban: String(raw.jawaban || '').trim().toUpperCase().charAt(0),
     pembahasan: String(raw.pembahasan || '').trim(),
+    // Soal lama (belum punya kolom tingkat) atau nilai yang tidak dikenali dianggap "Sedang".
+    tingkat: VALID_TINGKAT.includes(tingkatMentah) ? tingkatMentah : 'Sedang',
     // Bisa berupa data-URI base64 (baru dipilih, belum sempat reload) atau URL Google Drive
     // (sudah tersimpan lewat Apps Script). Header sheet "gambarUrl" jadi "gambarurl" saat dibaca.
     gambar: String(raw.gambar || raw.gambarurl || raw.gambarUrl || '').trim()
@@ -148,6 +155,30 @@ async function saveNilai(entry) {
   const list = JSON.parse(localStorage.getItem(LOCAL_NILAI_KEY) || '[]');
   list.push(Object.assign({ waktu: new Date().toISOString() }, entry));
   localStorage.setItem(LOCAL_NILAI_KEY, JSON.stringify(list));
+}
+
+// Pengaturan Latihan (jumlah soal per latihan & komposisi tingkat kesulitan). Disimpan
+// di tempat yang sama dengan data soal (sheet "Pengaturan" / localStorage) supaya berlaku
+// sama untuk semua siswa, bukan cuma di satu perangkat.
+async function loadPengaturanLatihan() {
+  if (CONFIG.dataSource === 'sheets') {
+    const data = await callApi('GET', 'pengaturan');
+    return Object.assign({}, DEFAULT_PENGATURAN_LATIHAN, data);
+  }
+  try {
+    const raw = JSON.parse(localStorage.getItem(LOCAL_PENGATURAN_KEY) || 'null');
+    return Object.assign({}, DEFAULT_PENGATURAN_LATIHAN, raw || {});
+  } catch (e) {
+    return Object.assign({}, DEFAULT_PENGATURAN_LATIHAN);
+  }
+}
+
+async function savePengaturanLatihan(data) {
+  if (CONFIG.dataSource === 'sheets') {
+    await callApi('POST', 'updatePengaturan', data);
+    return;
+  }
+  localStorage.setItem(LOCAL_PENGATURAN_KEY, JSON.stringify(data));
 }
 
 // ---------- Komunikasi dengan Google Apps Script Web App ----------

@@ -21,14 +21,21 @@
 
 var SHEET_SOAL = 'Soal';
 var SHEET_NILAI = 'Nilai';
+var SHEET_PENGATURAN = 'Pengaturan';
 var IMAGE_FOLDER_NAME = 'Bank Soal - Gambar Soal';
 
-var SOAL_HEADERS = ['id', 'kelas', 'mapel', 'bab', 'pertanyaan', 'opsiA', 'opsiB', 'opsiC', 'opsiD', 'jawaban', 'pembahasan', 'gambarUrl'];
+// Kolom "tingkat" ditaruh di akhir (bukan disisipkan di tengah) supaya kolom yang
+// sudah ada di sheet lama tidak bergeser posisinya.
+var SOAL_HEADERS = ['id', 'kelas', 'mapel', 'bab', 'pertanyaan', 'opsiA', 'opsiB', 'opsiC', 'opsiD', 'jawaban', 'pembahasan', 'gambarUrl', 'tingkat'];
 var NILAI_HEADERS = ['waktu', 'nama', 'kelasRombel', 'kelas', 'mapel', 'skor', 'total', 'persentase', 'detailJawaban'];
+// Sheet "Pengaturan" berbentuk key-value (bukan satu baris per soal/nilai), dipakai untuk
+// menyimpan Pengaturan Latihan supaya berlaku sama untuk semua siswa dari perangkat manapun.
+var PENGATURAN_HEADERS = ['key', 'value'];
 
 var VALID_KELAS = ['7', '8', '9'];
 var VALID_MAPEL = ['Matematika', 'IPA', 'IPS', 'Bahasa Indonesia', 'Bahasa Inggris', 'PPKn'];
 var VALID_JAWABAN = ['A', 'B', 'C', 'D'];
+var VALID_TINGKAT = ['Mudah', 'Sedang', 'Sulit'];
 
 // HARUS sama persis dengan CONFIG.apiSecret di js/config.js — tanpa ini siapa pun yang
 // tahu URL Web App bisa langsung kirim data (nambah soal palsu, kirim nilai palsu) tanpa
@@ -59,6 +66,15 @@ function setupSheets() {
   } else {
     ensureColumns_(nilai, NILAI_HEADERS);
   }
+
+  var pengaturan = ss.getSheetByName(SHEET_PENGATURAN);
+  if (!pengaturan) {
+    pengaturan = ss.insertSheet(SHEET_PENGATURAN);
+    pengaturan.appendRow(PENGATURAN_HEADERS);
+  } else {
+    ensureColumns_(pengaturan, PENGATURAN_HEADERS);
+  }
+  seedPengaturanDefault_(pengaturan);
 }
 
 function doGet(e) {
@@ -66,6 +82,12 @@ function doGet(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   try {
+    if (action === 'pengaturan') {
+      var pengaturanSheet = ss.getSheetByName(SHEET_PENGATURAN);
+      if (!pengaturanSheet) return jsonResponse({ error: 'Tab "Pengaturan" tidak ditemukan. Jalankan setupSheets() dulu.' });
+      return jsonResponse({ data: readPengaturan_(pengaturanSheet) });
+    }
+
     var sheetName = action === 'nilai' ? SHEET_NILAI : SHEET_SOAL;
     var sheet = ss.getSheetByName(sheetName);
     if (!sheet) return jsonResponse({ error: 'Tab "' + sheetName + '" tidak ditemukan. Jalankan setupSheets() dulu.' });
@@ -96,6 +118,19 @@ function doPost(e) {
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
+    if (body.type === 'updatePengaturan') {
+      var pengaturanValidationError = validatePengaturanPayload_(body);
+      if (pengaturanValidationError) return jsonResponse({ error: pengaturanValidationError });
+
+      var pengaturanSheet2 = ss.getSheetByName(SHEET_PENGATURAN);
+      if (!pengaturanSheet2) return jsonResponse({ error: 'Tab "Pengaturan" tidak ditemukan. Jalankan setupSheets() dulu.' });
+      writePengaturanValue_(pengaturanSheet2, 'jumlahSoal', body.jumlahSoal);
+      writePengaturanValue_(pengaturanSheet2, 'persenMudah', body.persenMudah);
+      writePengaturanValue_(pengaturanSheet2, 'persenSedang', body.persenSedang);
+      writePengaturanValue_(pengaturanSheet2, 'persenSulit', body.persenSulit);
+      return jsonResponse({ ok: true });
+    }
+
     if (body.type === 'soal' || body.type === 'updateSoal') {
       var validationError = validateSoalPayload_(body);
       if (validationError) return jsonResponse({ error: validationError });
@@ -117,7 +152,8 @@ function doPost(e) {
         opsiD: body.opsiD,
         jawaban: body.jawaban,
         pembahasan: body.pembahasan,
-        gambarUrl: resolveGambar_(body.gambar, newId)
+        gambarUrl: resolveGambar_(body.gambar, newId),
+        tingkat: resolveTingkat_(body.tingkat)
       });
       return jsonResponse({ ok: true, id: newId });
     }
@@ -141,7 +177,8 @@ function doPost(e) {
         opsiD: body.opsiD,
         jawaban: body.jawaban,
         pembahasan: body.pembahasan,
-        gambarUrl: resolveGambar_(body.gambar, body.id)
+        gambarUrl: resolveGambar_(body.gambar, body.id),
+        tingkat: resolveTingkat_(body.tingkat)
       });
       return jsonResponse({ ok: true });
     }
@@ -200,6 +237,25 @@ function validateSoalPayload_(body) {
   }
   if (!String(body.pembahasan || '').trim()) return 'pembahasan tidak boleh kosong.';
   if (body.gambar && String(body.gambar).length > 3000000) return 'Ukuran foto terlalu besar.';
+  // tingkat boleh kosong (soal lama/tanpa tingkat otomatis dianggap "Sedang" oleh
+  // resolveTingkat_), tapi kalau diisi harus salah satu nilai yang valid.
+  if (body.tingkat && VALID_TINGKAT.indexOf(String(body.tingkat)) === -1) {
+    return 'tingkat harus salah satu dari: ' + VALID_TINGKAT.join(', ');
+  }
+  return null;
+}
+
+function validatePengaturanPayload_(body) {
+  var jumlah = Number(body.jumlahSoal);
+  if (isNaN(jumlah) || jumlah < 1) return 'jumlah soal per latihan harus angka minimal 1.';
+
+  var mudah = Number(body.persenMudah);
+  var sedang = Number(body.persenSedang);
+  var sulit = Number(body.persenSulit);
+  if (isNaN(mudah) || isNaN(sedang) || isNaN(sulit) || mudah < 0 || sedang < 0 || sulit < 0) {
+    return 'persentase tingkat kesulitan harus angka 0 atau lebih.';
+  }
+  if (mudah + sedang + sulit !== 100) return 'total persentase Mudah + Sedang + Sulit harus 100%.';
   return null;
 }
 
@@ -242,6 +298,58 @@ function getOrCreateImageFolder_() {
   var folders = DriveApp.getFoldersByName(IMAGE_FOLDER_NAME);
   if (folders.hasNext()) return folders.next();
   return DriveApp.createFolder(IMAGE_FOLDER_NAME);
+}
+
+// Soal tanpa tingkat (data lama) atau tingkat yang tidak dikenali dianggap "Sedang".
+function resolveTingkat_(tingkat) {
+  var t = String(tingkat || '').trim();
+  return VALID_TINGKAT.indexOf(t) === -1 ? 'Sedang' : t;
+}
+
+// ---------- Pengaturan Latihan (sheet key-value, terpusat untuk semua siswa) ----------
+
+function readPengaturan_(sheet) {
+  var rows = sheetToObjects(sheet); // tiap baris: {key, value}
+  var map = {};
+  rows.forEach(function (r) { map[r.key] = r.value; });
+  return {
+    jumlahSoal: map.jumlahSoal !== undefined && map.jumlahSoal !== '' ? Number(map.jumlahSoal) : 20,
+    persenMudah: map.persenMudah !== undefined && map.persenMudah !== '' ? Number(map.persenMudah) : 40,
+    persenSedang: map.persenSedang !== undefined && map.persenSedang !== '' ? Number(map.persenSedang) : 40,
+    persenSulit: map.persenSulit !== undefined && map.persenSulit !== '' ? Number(map.persenSulit) : 20
+  };
+}
+
+function writePengaturanValue_(sheet, key, value) {
+  var headers = getHeaders_(sheet);
+  var keyCol = headers.indexOf('key');
+  var valueCol = headers.indexOf('value');
+  var lastRow = sheet.getLastRow();
+
+  if (lastRow >= 2) {
+    var keys = sheet.getRange(2, keyCol + 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < keys.length; i++) {
+      if (String(keys[i][0]) === key) {
+        sheet.getRange(i + 2, valueCol + 1).setValue(value);
+        return;
+      }
+    }
+  }
+  // Key belum ada di sheet -> tambah baris baru.
+  var row = headers.map(function (h) {
+    if (h === 'key') return key;
+    if (h === 'value') return value;
+    return '';
+  });
+  sheet.appendRow(row);
+}
+
+function seedPengaturanDefault_(sheet) {
+  if (sheet.getLastRow() >= 2) return; // sudah ada data (mis. sudah pernah disimpan guru), jangan ditimpa
+  writePengaturanValue_(sheet, 'jumlahSoal', 20);
+  writePengaturanValue_(sheet, 'persenMudah', 40);
+  writePengaturanValue_(sheet, 'persenSedang', 40);
+  writePengaturanValue_(sheet, 'persenSulit', 20);
 }
 
 // ---------- Helper baca/tulis sheet berdasarkan nama kolom (bukan posisi tetap) ----------

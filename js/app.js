@@ -26,7 +26,9 @@ const state = {
   quizList: [],
   currentIndex: 0,
   answers: {},
-  nilaiList: []
+  nilaiList: [],
+  // Nilai default dipakai sementara sebelum loadPengaturanLatihan() selesai / kalau gagal dimuat.
+  pengaturanLatihan: { jumlahSoal: 20, persenMudah: 40, persenSedang: 40, persenSulit: 20 }
 };
 
 const screens = {};
@@ -64,6 +66,13 @@ async function init() {
 
   try {
     state.questions = await loadQuestions();
+    try {
+      // Pengaturan Latihan tidak wajib berhasil dimuat supaya siswa tetap bisa belajar
+      // (pakai default di atas) kalau tab "Pengaturan" belum dibuat guru di Sheets.
+      state.pengaturanLatihan = await loadPengaturanLatihan();
+    } catch (err) {
+      console.warn('Gagal memuat Pengaturan Latihan, pakai nilai default:', err.message);
+    }
     showScreen('screen-home');
   } catch (err) {
     document.getElementById('error-message').textContent = err.message;
@@ -192,6 +201,12 @@ function wireStaticEvents() {
     renderKelasScreen();
     showScreen('screen-kelas');
   });
+
+  document.getElementById('btn-menu-pengaturan-latihan').addEventListener('click', () => {
+    openPengaturanLatihanScreen();
+  });
+
+  document.getElementById('form-pengaturan-latihan').addEventListener('submit', handleSimpanPengaturanLatihan);
 
   document.getElementById('btn-quiz-prev').addEventListener('click', () => {
     if (state.currentIndex > 0) {
@@ -413,16 +428,26 @@ function renderBabScreen() {
 // ---------- MODE SISWA: KUIS ----------
 
 function startQuiz() {
-  const filtered = state.questions.filter((q) => {
-    if (q.kelas !== state.kelas || q.mapel !== state.mapel) return false;
-    if (!state.babFilter) return true;
-    const bab = q.bab && q.bab.trim() ? q.bab.trim() : 'Lainnya';
-    return bab === state.babFilter;
-  });
+  const poolDasar = state.questions.filter((q) => q.kelas === state.kelas && q.mapel === state.mapel);
+  const jumlahSoal = state.pengaturanLatihan.jumlahSoal;
+  const komposisi = {
+    Mudah: state.pengaturanLatihan.persenMudah,
+    Sedang: state.pengaturanLatihan.persenSedang,
+    Sulit: state.pengaturanLatihan.persenSulit
+  };
 
-  // Acak urutan soal, dan acak urutan opsi A-D per soal (per percobaan) supaya siswa
-  // tidak bisa saling contek lewat "nomor sekian jawabannya X".
-  state.quizList = shuffleArray(filtered).map(shuffleQuestionOptions);
+  let terpilih;
+  if (!state.babFilter) {
+    terpilih = pilihSoalSemuaBab(poolDasar, jumlahSoal, komposisi);
+  } else {
+    const babPool = poolDasar.filter((q) => (q.bab && q.bab.trim() ? q.bab.trim() : 'Lainnya') === state.babFilter);
+    terpilih = pilihSoalKomposisi(babPool, jumlahSoal, komposisi);
+  }
+
+  // Acak urutan soal hasil seleksi, dan acak urutan opsi A-D per soal (per percobaan)
+  // supaya siswa tidak bisa saling contek lewat "nomor sekian jawabannya X". Dipanggil
+  // ulang tiap kali (termasuk saat klik "Ulangi Latihan") jadi hasilnya bisa berbeda-beda.
+  state.quizList = shuffleArray(terpilih).map(shuffleQuestionOptions);
   state.currentIndex = 0;
   state.answers = {};
 
@@ -445,6 +470,108 @@ function shuffleArray(arr) {
     copy[j] = tmp;
   }
   return copy;
+}
+
+const TINGKAT_LIST = ['Mudah', 'Sedang', 'Sulit'];
+
+// Urutan tingkat lain dari yang paling dekat ke paling jauh -- dipakai untuk menutupi
+// kekurangan jatah soal di suatu tingkat (mis. Sulit kurang -> ambil dari Sedang dulu,
+// baru Mudah; Sedang kurang -> Mudah/Sulit sama-sama "tingkat terdekat").
+function urutanTingkatTerdekat(tingkat) {
+  const idx = TINGKAT_LIST.indexOf(tingkat);
+  return TINGKAT_LIST
+    .map((t, i) => ({ t, jarak: Math.abs(i - idx) }))
+    .filter((x) => x.t !== tingkat)
+    .sort((a, b) => a.jarak - b.jarak)
+    .map((x) => x.t);
+}
+
+// Ambil `jumlah` soal dari `pool` mengikuti komposisi persentase tingkat kesulitan
+// (komposisi = {Mudah, Sedang, Sulit} dalam %, total 100). Kalau pool tidak cukup,
+// pakai semua; kalau suatu tingkat kurang, kekurangannya ditutup dari tingkat terdekat.
+function pilihSoalKomposisi(pool, jumlah, komposisi) {
+  if (pool.length <= jumlah) return pool.slice();
+
+  // Jatah tiap tingkat dari persentase, dibulatkan; selisih pembulatan dibetulkan
+  // di tingkat berpersentase terbesar supaya totalnya tetap pas `jumlah`.
+  const jatah = {};
+  let totalJatah = 0;
+  TINGKAT_LIST.forEach((t) => {
+    jatah[t] = Math.round((komposisi[t] / 100) * jumlah);
+    totalJatah += jatah[t];
+  });
+  const selisih = jumlah - totalJatah;
+  if (selisih !== 0) {
+    const tingkatTerbesar = TINGKAT_LIST.slice().sort((a, b) => komposisi[b] - komposisi[a])[0];
+    jatah[tingkatTerbesar] += selisih;
+  }
+
+  const poolByTingkat = {};
+  TINGKAT_LIST.forEach((t) => {
+    poolByTingkat[t] = shuffleArray(pool.filter((q) => q.tingkat === t));
+  });
+
+  const terpilih = [];
+  const kekurangan = {};
+  TINGKAT_LIST.forEach((t) => {
+    const ambil = poolByTingkat[t].splice(0, jatah[t]);
+    terpilih.push(...ambil);
+    kekurangan[t] = jatah[t] - ambil.length;
+  });
+
+  TINGKAT_LIST.forEach((t) => {
+    let kurang = kekurangan[t];
+    if (kurang <= 0) return;
+    const kandidat = urutanTingkatTerdekat(t);
+    for (let i = 0; i < kandidat.length && kurang > 0; i++) {
+      const ambil = poolByTingkat[kandidat[i]].splice(0, kurang);
+      terpilih.push(...ambil);
+      kurang -= ambil.length;
+    }
+  });
+
+  return terpilih;
+}
+
+// Versi untuk pilihan siswa "Semua Bab": jatah soal dibagi rata ke tiap bab dulu (tiap
+// bab tetap ikut komposisi tingkat lewat pilihSoalKomposisi), lalu kekurangan suatu bab
+// (soalnya sedikit) ditutup dari sisa soal bab-bab lain.
+function pilihSoalSemuaBab(pool, jumlah, komposisi) {
+  if (pool.length <= jumlah) return pool.slice();
+
+  const babMap = new Map();
+  pool.forEach((q) => {
+    const nama = q.bab && q.bab.trim() ? q.bab.trim() : 'Lainnya';
+    if (!babMap.has(nama)) babMap.set(nama, []);
+    babMap.get(nama).push(q);
+  });
+  const daftarBab = Array.from(babMap.keys());
+
+  const jatahDasar = Math.floor(jumlah / daftarBab.length);
+  let sisaBagi = jumlah % daftarBab.length;
+
+  const terpilih = [];
+  let sisaSemuaBab = [];
+  let totalKurang = 0;
+
+  daftarBab.forEach((nama) => {
+    const jatahBab = jatahDasar + (sisaBagi > 0 ? 1 : 0);
+    if (sisaBagi > 0) sisaBagi--;
+
+    const babPool = babMap.get(nama);
+    const ambil = pilihSoalKomposisi(babPool, jatahBab, komposisi);
+    terpilih.push(...ambil);
+
+    const idTerpakai = new Set(ambil.map((q) => q.id));
+    sisaSemuaBab = sisaSemuaBab.concat(babPool.filter((q) => !idTerpakai.has(q.id)));
+    totalKurang += jatahBab - ambil.length;
+  });
+
+  if (totalKurang > 0 && sisaSemuaBab.length > 0) {
+    terpilih.push(...pilihSoalKomposisi(sisaSemuaBab, totalKurang, komposisi));
+  }
+
+  return terpilih;
 }
 
 // Mengembalikan salinan soal dengan urutan opsi A-D diacak (tanpa mengubah data asli
@@ -719,6 +846,7 @@ function openTambahSoal(existing) {
   document.getElementById('ts-kelas').value = existing ? existing.kelas : (state.kelas || '7');
   document.getElementById('ts-mapel').value = existing ? existing.mapel : (state.mapel || MAPEL_LIST[0].nama);
   document.getElementById('ts-bab').value = existing ? existing.bab : '';
+  document.getElementById('ts-tingkat').value = existing ? existing.tingkat : 'Sedang';
   document.getElementById('ts-pertanyaan').value = existing ? existing.pertanyaan : '';
   document.getElementById('ts-opsiA').value = existing ? existing.opsi.A : '';
   document.getElementById('ts-opsiB').value = existing ? existing.opsi.B : '';
@@ -833,6 +961,7 @@ async function handleSimpanSoal(e) {
     kelas: document.getElementById('ts-kelas').value,
     mapel: document.getElementById('ts-mapel').value,
     bab: document.getElementById('ts-bab').value.trim(),
+    tingkat: document.getElementById('ts-tingkat').value,
     pertanyaan: document.getElementById('ts-pertanyaan').value.trim(),
     opsiA: document.getElementById('ts-opsiA').value.trim(),
     opsiB: document.getElementById('ts-opsiB').value.trim(),
@@ -875,6 +1004,7 @@ async function handleSimpanSoal(e) {
         document.getElementById(id).value = '';
       });
       document.getElementById('ts-jawaban').value = 'A';
+      document.getElementById('ts-tingkat').value = 'Sedang';
       resetGambarState();
       document.getElementById('ts-pertanyaan').focus();
     }
@@ -890,7 +1020,9 @@ async function handleSimpanSoal(e) {
 
 // ---------- MODE GURU: IMPORT SOAL MASSAL ----------
 
-const IMPORT_COLUMNS = ['kelas', 'mapel', 'bab', 'pertanyaan', 'opsiA', 'opsiB', 'opsiC', 'opsiD', 'jawaban', 'pembahasan'];
+// Kolom "tingkat" ditaruh di akhir (opsional) supaya file CSV lama tanpa kolom itu tetap
+// bisa diimport apa adanya -- baris tanpa kolom ke-11 otomatis dianggap "Sedang".
+const IMPORT_COLUMNS = ['kelas', 'mapel', 'bab', 'pertanyaan', 'opsiA', 'opsiB', 'opsiC', 'opsiD', 'jawaban', 'pembahasan', 'tingkat'];
 
 function resetImportScreen() {
   document.getElementById('import-file-input').value = '';
@@ -906,7 +1038,7 @@ function downloadTemplateCsv() {
   const contoh = [
     '7', 'Matematika', 'Bilangan Bulat',
     'Hasil dari 5 + 3 adalah ...', '6', '7', '8', '9', 'C',
-    'Karena 5 + 3 = 8.'
+    'Karena 5 + 3 = 8.', 'Mudah'
   ].map(csvEscape).join(',');
 
   const csvContent = '﻿' + headerRow + '\r\n' + contoh + '\r\n';
@@ -999,6 +1131,8 @@ async function handleMulaiImport() {
       opsiD: (r[7] || '').trim(),
       jawaban: (r[8] || '').trim().toUpperCase(),
       pembahasan: (r[9] || '').trim(),
+      // Kolom ke-11, opsional: kalau kosong/tidak ada/tidak valid, dianggap "Sedang".
+      tingkat: (r[10] || '').trim(),
       gambar: ''
     };
 
@@ -1036,6 +1170,9 @@ function validateSoalRow(payload) {
   if (!payload.opsiA || !payload.opsiB || !payload.opsiC || !payload.opsiD) return 'ada opsi A-D yang kosong';
   if (!['A', 'B', 'C', 'D'].includes(payload.jawaban)) return 'kolom jawaban harus A, B, C, atau D';
   if (!payload.pembahasan) return 'pembahasan kosong';
+  if (payload.tingkat && !['Mudah', 'Sedang', 'Sulit'].includes(payload.tingkat)) {
+    return 'kolom tingkat harus Mudah, Sedang, Sulit, atau dikosongkan';
+  }
   return null;
 }
 
@@ -1096,6 +1233,65 @@ function renderStatistik() {
       </div>
     `;
   }).join('');
+}
+
+// ---------- MODE GURU: PENGATURAN LATIHAN ----------
+
+function openPengaturanLatihanScreen() {
+  const p = state.pengaturanLatihan;
+  document.getElementById('pl-jumlah-soal').value = p.jumlahSoal;
+  document.getElementById('pl-persen-mudah').value = p.persenMudah;
+  document.getElementById('pl-persen-sedang').value = p.persenSedang;
+  document.getElementById('pl-persen-sulit').value = p.persenSulit;
+
+  const msg = document.getElementById('pl-message');
+  msg.hidden = true;
+  msg.className = 'form-message';
+
+  showScreen('screen-pengaturan-latihan');
+}
+
+async function handleSimpanPengaturanLatihan(e) {
+  e.preventDefault();
+  const msg = document.getElementById('pl-message');
+  const btn = document.getElementById('btn-simpan-pengaturan');
+
+  const payload = {
+    jumlahSoal: Number(document.getElementById('pl-jumlah-soal').value),
+    persenMudah: Number(document.getElementById('pl-persen-mudah').value),
+    persenSedang: Number(document.getElementById('pl-persen-sedang').value),
+    persenSulit: Number(document.getElementById('pl-persen-sulit').value)
+  };
+
+  if (!payload.jumlahSoal || payload.jumlahSoal < 1) {
+    msg.textContent = '⚠️ Jumlah soal per latihan minimal 1.';
+    msg.className = 'form-message error';
+    msg.hidden = false;
+    return;
+  }
+  if (payload.persenMudah + payload.persenSedang + payload.persenSulit !== 100) {
+    msg.textContent = '⚠️ Total persentase Mudah + Sedang + Sulit harus 100%.';
+    msg.className = 'form-message error';
+    msg.hidden = false;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+  try {
+    await savePengaturanLatihan(payload);
+    state.pengaturanLatihan = payload;
+    msg.textContent = '✅ Pengaturan disimpan! Berlaku untuk semua siswa.';
+    msg.className = 'form-message success';
+    msg.hidden = false;
+  } catch (err) {
+    msg.textContent = '⚠️ Gagal menyimpan: ' + err.message;
+    msg.className = 'form-message error';
+    msg.hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Simpan Pengaturan';
+  }
 }
 
 // ---------- MODE GURU: REKAP NILAI ----------

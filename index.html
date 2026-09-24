@@ -117,6 +117,10 @@
             <span class="role-icon">🏆</span>
             <span>Papan Peringkat</span>
           </button>
+          <button id="btn-menu-pengaturan-latihan" class="role-button role-menu-alt">
+            <span class="role-icon">⚙️</span>
+            <span>Pengaturan Latihan</span>
+          </button>
           <button id="btn-menu-nilai" class="role-button role-guru">
             <span class="role-icon">📊</span>
             <span>Rekap Nilai Siswa</span>
@@ -232,6 +236,13 @@
           <label>Bab / Topik
             <input id="ts-bab" type="text" placeholder="Contoh: Bilangan Bulat">
           </label>
+          <label>Tingkat Kesulitan
+            <select id="ts-tingkat">
+              <option value="Mudah">Mudah</option>
+              <option value="Sedang" selected>Sedang</option>
+              <option value="Sulit">Sulit</option>
+            </select>
+          </label>
           <label>Pertanyaan
             <textarea id="ts-pertanyaan" rows="3" required placeholder="Tulis pertanyaan di sini..."></textarea>
           </label>
@@ -260,6 +271,36 @@
           </label>
           <p id="ts-message" class="form-message" hidden></p>
           <button type="submit" id="btn-simpan-soal" class="primary-button">Simpan Soal</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- PENGATURAN LATIHAN (GURU) -->
+    <section id="screen-pengaturan-latihan" class="screen">
+      <div class="card">
+        <button class="back-button" data-back="screen-guru-menu">&larr; Kembali</button>
+        <h2>Pengaturan Latihan</h2>
+        <p class="hint-text">Berlaku untuk semua siswa saat mengerjakan Latihan Bebas (bukan cuma di HP ini).</p>
+        <form id="form-pengaturan-latihan" class="stack-form">
+          <label>Jumlah Soal per Latihan
+            <input id="pl-jumlah-soal" type="number" min="1" max="200" required>
+          </label>
+          <p class="hint-text small-hint">Kalau soal yang cocok (kelas/mapel/bab) lebih sedikit dari angka ini, semua soal yang ada akan dipakai.</p>
+          <label>Komposisi Tingkat Kesulitan</label>
+          <div class="pengaturan-tingkat-row">
+            <label class="pengaturan-tingkat-item">Mudah (%)
+              <input id="pl-persen-mudah" type="number" min="0" max="100" required>
+            </label>
+            <label class="pengaturan-tingkat-item">Sedang (%)
+              <input id="pl-persen-sedang" type="number" min="0" max="100" required>
+            </label>
+            <label class="pengaturan-tingkat-item">Sulit (%)
+              <input id="pl-persen-sulit" type="number" min="0" max="100" required>
+            </label>
+          </div>
+          <p class="hint-text small-hint">Total ketiganya harus 100%.</p>
+          <p id="pl-message" class="form-message" hidden></p>
+          <button type="submit" id="btn-simpan-pengaturan" class="primary-button">Simpan Pengaturan</button>
         </form>
       </div>
     </section>
@@ -302,14 +343,14 @@
       <div class="card">
         <button class="back-button" data-back="screen-guru-menu">&larr; Kembali</button>
         <h2>Import Soal Massal</h2>
-        <p class="hint-text">Tempel data CSV di bawah, atau upload file .csv. Urutan kolom: kelas, mapel, bab, pertanyaan, opsiA, opsiB, opsiC, opsiD, jawaban, pembahasan.</p>
+        <p class="hint-text">Tempel data CSV di bawah, atau upload file .csv. Urutan kolom: kelas, mapel, bab, pertanyaan, opsiA, opsiB, opsiC, opsiD, jawaban, pembahasan, tingkat (opsional: Mudah/Sedang/Sulit, kosong = Sedang).</p>
         <button id="btn-unduh-template-csv" type="button" class="secondary-button small-button">⬇️ Unduh Template CSV</button>
         <div class="stack-form">
           <label>Upload file CSV (opsional)
             <input id="import-file-input" type="file" accept=".csv,text/csv">
           </label>
           <label>Atau tempel data CSV di sini
-            <textarea id="import-textarea" rows="8" placeholder="kelas,mapel,bab,pertanyaan,opsiA,opsiB,opsiC,opsiD,jawaban,pembahasan"></textarea>
+            <textarea id="import-textarea" rows="8" placeholder="kelas,mapel,bab,pertanyaan,opsiA,opsiB,opsiC,opsiD,jawaban,pembahasan,tingkat"></textarea>
           </label>
           <button id="btn-mulai-import" type="button" class="primary-button">Mulai Import</button>
         </div>

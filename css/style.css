@@ -411,6 +411,19 @@ h3 {
   font-size: 0.78rem;
 }
 
+/* PENGATURAN LATIHAN (GURU) */
+
+.pengaturan-tingkat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pengaturan-tingkat-item {
+  flex: 1;
+  min-width: 90px;
+}
+
 .small-button {
   padding: 8px 14px;
   font-size: 0.85rem;
