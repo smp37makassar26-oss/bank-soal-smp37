@@ -40,7 +40,7 @@ var VALID_TINGKAT = ['Mudah', 'Sedang', 'Sulit'];
 // HARUS sama persis dengan CONFIG.apiSecret di js/config.js — tanpa ini siapa pun yang
 // tahu URL Web App bisa langsung kirim data (nambah soal palsu, kirim nilai palsu) tanpa
 // lewat website ini sama sekali. Kosongkan '' hanya kalau benar-benar paham risikonya.
-var SHARED_SECRET = '6636f657a0ffa76aba9d44f3227b26cb';
+var SHARED_SECRET = 'smp37makassar';
 
 // PIN Mode Guru yang SESUNGGUHNYA — beda dari guruPin di js/config.js (yang hanya dipakai
 // untuk mode 'local'/testing). Diverifikasi di sini (server), jadi tidak pernah dikirim ke
