@@ -6,7 +6,9 @@ const MAPEL_LIST = [
   { nama: 'IPS', ikon: '🌍', warna: '#f2994a' },
   { nama: 'Bahasa Indonesia', ikon: '📖', warna: '#ec4899' },
   { nama: 'Bahasa Inggris', ikon: '🔤', warna: '#8b5cf6' },
-  { nama: 'PPKn', ikon: '🇮🇩', warna: '#dc2626' }
+  { nama: 'PPKn', ikon: '🇮🇩', warna: '#dc2626' },
+  { nama: 'PJOK', ikon: '⚽', warna: '#0ea5e9' },
+  { nama: 'PAI', ikon: '🕌', warna: '#059669' }
 ];
 
 const KELAS_LIST = ['7', '8', '9'];

@@ -33,7 +33,7 @@ var NILAI_HEADERS = ['waktu', 'nama', 'kelasRombel', 'kelas', 'mapel', 'skor', '
 var PENGATURAN_HEADERS = ['key', 'value'];
 
 var VALID_KELAS = ['7', '8', '9'];
-var VALID_MAPEL = ['Matematika', 'IPA', 'IPS', 'Bahasa Indonesia', 'Bahasa Inggris', 'PPKn'];
+var VALID_MAPEL = ['Matematika', 'IPA', 'IPS', 'Bahasa Indonesia', 'Bahasa Inggris', 'PPKn', 'PJOK', 'PAI'];
 var VALID_JAWABAN = ['A', 'B', 'C', 'D'];
 var VALID_TINGKAT = ['Mudah', 'Sedang', 'Sulit'];
 
